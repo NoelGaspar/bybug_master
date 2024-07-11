@@ -9,6 +9,9 @@ import threading
 import time
 import json
 from datetime import datetime
+from os import system
+
+
 #from utils.command_line_utils import CommandLineUtils
 
 # This sample uses the Message Broker for AWS IoT to send and receive messages
@@ -30,7 +33,8 @@ sensor_dic = {	"01":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,
 				"06":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5},
 				"07":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5},
 				"09":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5},
-				"10":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5}}
+				"10":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5},
+				"12":{"time":"00:00:00 2024-05-16","t1":25.5,"t2":25.5,"h1":60.5,"h2":60.5,"co2":400.5}}
 
 humidificador_dic = { 	"03":{"time":"00:00:00 2024-05-16","e":0},
 						"08":{"time":"00:00:00 2024-05-16","e":0} }
@@ -40,16 +44,21 @@ extractor_dic = {	"02":{"time":"00:00:00 2024-05-16","e1":0,"e2":0,"e3":0},
 puertas_dic = { "04":{"time":"00:00:00 2024-05-16","p1":0,"p2":0},
 				"01":{"time":"00:00:00 2024-05-16","p1":0,"p2":0}}
 
+
+
 message_topic_pub = 'bybp001/sub'
 message_topic_sub = 'bybp001/pub'
 
+HUMIDITY_LOWER_TH = 60
+HUMIDITY_UPPER_TH = 65
 
 def updateData(payload):
 	#print("Received message {}".format(payload))
+	system("clear")
 	data = json.loads(payload)
 	id = data["id"][-2:]
 	print("msj from node : {}".format(id))
-	if int(id) in [1,2,5,6,7,9,10]:
+	if int(id) in [1,2,5,6,7,9,10,12]:
 		t1 = data["sht_t"]
 		t2 = data["cap_t"]
 		h1 = data["sht_h"]
@@ -119,10 +128,10 @@ def updateControl():
 	avg_h1 = "{:.2f}".format(sum_h1/4.0)
 	avg_c1 = "{:.2f}".format(sum_c1/4.0)
 	print("Sala 1. temp:{}, hum:{}, co2:{}".format(avg_t1,avg_h1,avg_c1),end = "")
-	if float(avg_h1) >= 70.0:
+	if float(avg_h1) >= HUMIDITY_UPPER_TH:
 		print(" comando apagar humidificador sala 1")
 		msg = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 0}}'
-	elif float(avg_h1) < 60.0:
+	elif float(avg_h1) < HUMIDITY_LOWER_TH:
 		print(" comando prender humidificador sala 1")
 		msg = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 1}}'
 	else:
@@ -141,10 +150,10 @@ def updateControl():
 	avg_h2 = "{:.2f}".format(sum_h2/3.0)
 	avg_c2 = "{:.2f}".format(sum_c2/3.0)
 	print("Sala 2. temp:{}, hum:{}, co2:{}".format(avg_t2,avg_h2,avg_c2),end ="")
-	if float(avg_h2) >= 70.0:
+	if float(avg_h2) >= HUMIDITY_UPPER_TH:
 		print(" comando apagar humidificador sala 2")
 		msg = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 0}}'
-	elif float(avg_h2) < 60.0:
+	elif float(avg_h2) < HUMIDITY_LOWER_TH:
 		print(" comando prender humidificador sala 2")
 		msg = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 1}}'
 	else:
