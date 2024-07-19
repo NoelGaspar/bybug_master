@@ -1,7 +1,19 @@
 Comando para loggearse:
-	ssh -i "EC-BYBUG.pem" ec2-user@ec2-18-229-117-159.sa-east-1.compute.amazonaws.com
+	ssh -i "BYBUG_CTRL.pem" ubuntu@ec2-52-67-164-55.sa-east-1.compute.amazonaws.com
+Repo del código
+	https://github.com/NoelGaspar/bybug_master
 Comando para entrar al screen
 	screen -r bybug
 Comando para salir del screen sin terminarla
 	Ctrl+a luego d
-
+crear un entorno virtual 
+	python3 -m venv NOMBRE
+correr un entorno virtual
+	source NOMBRE/bin/source
+terminar un entorno virtual 
+	deactivate
+instalar pip
+	python3 -m pip install  --upgrade pip
+instalar paquetes con pip
+	python3 -m pip install PAQUETE
+	

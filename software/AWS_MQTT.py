@@ -44,13 +44,92 @@ extractor_dic = {	"02":{"time":"00:00:00 2024-05-16","e1":0,"e2":0,"e3":0},
 puertas_dic = { "04":{"time":"00:00:00 2024-05-16","p1":0,"p2":0},
 				"01":{"time":"00:00:00 2024-05-16","p1":0,"p2":0}}
 
-
+sensors_room_1 = ['01','02','05','06','12']
+sensors_room_2 = ['07','09','10']
 
 message_topic_pub = 'bybp001/sub'
 message_topic_sub = 'bybp001/pub'
 
+last_hour_1	 	= 0
+actual_hour_1 	= 0
+last_hour_2 	= 0
+actual_hour_2 	= 0
+
+humidity_trigger_1 = 0
+humidity_trigger_2 = 0
+
+co2_trigger_1 = 0
+co2_trigger_2 = 0
+
+extractor_max_trigger_1 = False
+extractor_max_trigger_2 = False
+
+
 HUMIDITY_LOWER_TH = 60
 HUMIDITY_UPPER_TH = 65
+HUMIDITY_MAX_TH = 85
+CO2_MAX_TH = 800
+
+
+def sendMQTTcmd(_msg):
+	mqtt_connection.publish(
+		topic	= message_topic_pub,
+		payload	= _msg,
+		qos		= mqtt.QoS.AT_LEAST_ONCE)
+
+def humidifier( room = 1, onoff = True):
+	if room == 1:
+		if onoff:
+			cmd = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 0}}'
+		else:
+			cmd = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 1}}'
+		sendMQTTcmd(cmd)
+
+	elif room == 2:
+		if onoff:
+			cmd = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 0}}'
+		else:
+			cmd = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 1}}'
+		sendMQTTcmd(cmd)
+
+def extractor(room = 1, ch=1, onoff = True, all = False):
+	if room == 1:
+		if onoff:
+			if all:
+				for i in range(3):
+					cmd = '{"id": "BYBP001LILS1N002","cmd": "rele","arg": {"ch":'+str(i+1) +' ,"state": 0}}'
+					sendMQTTcmd(cmd)
+			else:
+				cmd = '{"id": "BYBP001LILS1N002","cmd": "rele","arg": {"ch":'+str(ch) +' ,"state": 0}}'
+				sendMQTTcmd(cmd)
+		else:
+			if all:
+				for i in range(3):
+					cmd = '{"id": "BYBP001LILS1N002","cmd": "rele","arg": {"ch":'+str(i+1) +' ,"state": 1}}'
+					sendMQTTcmd(cmd)
+			else:
+				cmd = '{"id": "BYBP001LILS1N002","cmd": "rele","arg": {"ch":'+str(ch) +' ,"state": 1}}'
+				sendMQTTcmd(cmd)
+
+	elif room == 2:
+		if onoff:
+			if all:
+				for i in range(2):
+					cmd = '{"id": "BYBP001LILS1N007","cmd": "rele","arg": {"ch":'+str(i+1) +' ,"state": 0}}'
+					sendMQTTcmd(cmd)
+			else:
+				cmd = '{"id": "BYBP001LILS1N007","cmd": "rele","arg": {"ch":'+str(ch) +' ,"state": 0}}'
+				sendMQTTcmd(cmd)
+		else:
+			if all:
+				for i in range(2):
+					cmd = '{"id": "BYBP001LILS1N007","cmd": "rele","arg": {"ch":'+str(i+1) +' ,"state": 1}}'
+					sendMQTTcmd(cmd)
+			else:
+				cmd = '{"id": "BYBP001LILS1N007","cmd": "rele","arg": {"ch":'+str(ch) +' ,"state": 1}}'
+				sendMQTTcmd(cmd)
+
+
 
 def updateData(payload):
 	#print("Received message {}".format(payload))
@@ -112,6 +191,7 @@ def updateData(payload):
 			print("n:{}, time: {},\tex1: {},\tex2: {}".format(e,extractor_dic[e]["time"],extractor_dic[e]["e1"],extractor_dic[e]["e2"]))
 
 def updateControl():
+	print()
 	print("---- Control ----")
 	#average all temperatures
 	sum_t1 = 0
@@ -120,50 +200,94 @@ def updateControl():
 	sum_t2 = 0
 	sum_h2 = 0
 	sum_c2 = 0
-	for e in[ '01','02','05','06']:
+
+	#get sensors from Room 1
+	for e in sensors_room_1:
 		sum_t1 += float(sensor_dic[e]["t1"])
 		sum_h1 += float(sensor_dic[e]["h1"])
 		sum_c1 += float(sensor_dic[e]["co2"])
+
+	#calculate average
 	avg_t1 = "{:.2f}".format(sum_t1/4.0)
 	avg_h1 = "{:.2f}".format(sum_h1/4.0)
 	avg_c1 = "{:.2f}".format(sum_c1/4.0)
-	print("Sala 1. temp:{}, hum:{}, co2:{}".format(avg_t1,avg_h1,avg_c1),end = "")
-	if float(avg_h1) >= HUMIDITY_UPPER_TH:
-		print(" comando apagar humidificador sala 1")
-		msg = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 0}}'
-	elif float(avg_h1) < HUMIDITY_LOWER_TH:
-		print(" comando prender humidificador sala 1")
-		msg = '{"id": "BYBP001LILS1N003","cmd": "rele","arg": {"ch": 2,"state": 1}}'
-	else:
-		print(" ")
-		msg = ""
-	if msg:
-		mqtt_connection.publish(
-			topic	= message_topic_pub,
-			payload	= msg,
-			qos		= mqtt.QoS.AT_LEAST_ONCE)
-	for e in[ '07','09','10']:
+	print("Sala 1. temp:{}, hum:{}, co2:{}".format(avg_t1,avg_h1,avg_c1))
+
+	#Calculate the status of sensors on room 2
+	for e in sensors_room_2:
 		sum_t2 += float( sensor_dic[e]["t1"])
 		sum_h2 += float(sensor_dic[e]["h1"])
 		sum_c2 += float(sensor_dic[e]["co2"])
+
 	avg_t2 = "{:.2f}".format(sum_t2/3.0)
 	avg_h2 = "{:.2f}".format(sum_h2/3.0)
 	avg_c2 = "{:.2f}".format(sum_c2/3.0)
-	print("Sala 2. temp:{}, hum:{}, co2:{}".format(avg_t2,avg_h2,avg_c2),end ="")
+	print("Sala 2. temp:{}, hum:{}, co2:{}".format(avg_t2,avg_h2,avg_c2))
+
+	#logic to control the state of humidifier of Room 1.
+	if float(avg_h1) >= HUMIDITY_UPPER_TH:
+		print(" comando apagar humidificador sala 1")
+		humidifier(room = 1, onff = True)
+	elif float(avg_h1) < HUMIDITY_LOWER_TH:
+		print(" comando prender humidificador sala 1")
+		humidifier(room = 1, onff = False)
+
+	#logic for humidity control on room 2
 	if float(avg_h2) >= HUMIDITY_UPPER_TH:
 		print(" comando apagar humidificador sala 2")
-		msg = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 0}}'
+		humidifier(room = 2, onff = True)
 	elif float(avg_h2) < HUMIDITY_LOWER_TH:
 		print(" comando prender humidificador sala 2")
-		msg = '{"id": "BYBP001LILS1N008","cmd": "rele","arg": {"ch": 2,"state": 1}}'
+		humidifier(room = 2, onff = False)
+
+	# Logic for extractors on room 1
+	for s in sensors_room_1:
+ 		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
+			extractor_max_trigger_1 = True
+			break
+		else:
+			extractor_max_trigger_1 = False
+
+	if extractor_max_trigger_1:# Prender todos los reles
+		print(" comando prender todos los extractores sala 1")
+		extractor(room = 1, ch = 1, onoff = True, all = True)
 	else:
-		print(" ")
-		msg = ""
-	if msg:
-		mqtt_connection.publish(
-			topic	= message_topic_pub,
-			payload	= msg,
-			qos		= mqtt.QoS.AT_LEAST_ONCE)
+		actual_hour_1 = datetime.now().hour
+		if actual_hour_1 != last_hour_1:
+			extractor(room = 1, ch = 1, onoff = Flase, all = True) # turn all extrator to off
+			if actual_hour_1 < 8:
+				print(" comando prender extractor 1 sala 1")
+				extractor(room = 1, ch = 1, onoff = True, all = False) # turn on only the extractor n1
+			elif actual_hour_1 <= 8  and actual_hour_1 < 16:
+				print(" comando prender extractor 2 sala 1")
+				extractor(room = 1, ch = 2, onoff = True, all = False) # turn on only the extractor n2
+			else:
+				print(" comando prender extractor 3 sala 1")
+				extractor(room = 1, ch = 3, onoff = True, all = False) # turn on only the extractor n3
+			last_hour_1 = actual_hour_1
+
+	# Logic for extractors on room 2
+	for s in sensors_room_2:
+ 		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
+			extractor_max_trigger_2 = True
+			break
+		else:
+			extractor_max_trigger_2 = False
+
+	if extractor_max_trigger_2:# Prender todos los reles
+		print(" comando prender todos los extractores sala 2")
+		extractor(room = 2, ch = 1, onoff = True, all = True)
+	else:
+		actual_hour_2 = datetime.now().hour
+		if actual_hour_2 != last_hour_2:
+			extractor(room = 2, ch = 1, onoff = Flase, all = True) # turn all extrator to off
+			if actual_hour_1 < 12:
+				print(" comando prender extractor 1 sala 2")
+				extractor(room = 1, ch = 1, onoff = True, all = False) # turn on only the extractor n1
+			else:
+				print(" comando prender extractor 2 sala 2")
+				extractor(room = 1, ch = 2, onoff = True, all = False) # turn on only the extractor n2
+			last_hour_2 = actual_hour_2
 
 # Callback when connection is accidentally lost.
 def on_connection_interrupted(connection, error, **kwargs):
