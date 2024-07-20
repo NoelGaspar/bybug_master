@@ -50,9 +50,9 @@ sensors_room_2 = ['07','09','10']
 message_topic_pub = 'bybp001/sub'
 message_topic_sub = 'bybp001/pub'
 
-last_hour_1	 	= 0
+last_hour_1	 	= -20
 actual_hour_1 	= 0
-last_hour_2 	= 0
+last_hour_2 	= -20
 actual_hour_2 	= 0
 
 humidity_trigger_1 = 0
@@ -190,7 +190,7 @@ def updateData(payload):
 		else:
 			print("n:{}, time: {},\tex1: {},\tex2: {}".format(e,extractor_dic[e]["time"],extractor_dic[e]["e1"],extractor_dic[e]["e2"]))
 
-def updateControl():
+def updateControl(lh1,lh2,ah1,ah2):
 	print()
 	print("---- Control ----")
 	#average all temperatures
@@ -227,18 +227,18 @@ def updateControl():
 	#logic to control the state of humidifier of Room 1.
 	if float(avg_h1) >= HUMIDITY_UPPER_TH:
 		print(" comando apagar humidificador sala 1")
-		humidifier(room = 1, onff = True)
+		humidifier(room = 1, onoff = True)
 	elif float(avg_h1) < HUMIDITY_LOWER_TH:
 		print(" comando prender humidificador sala 1")
-		humidifier(room = 1, onff = False)
+		humidifier(room = 1, onoff = False)
 
 	#logic for humidity control on room 2
 	if float(avg_h2) >= HUMIDITY_UPPER_TH:
 		print(" comando apagar humidificador sala 2")
-		humidifier(room = 2, onff = True)
+		humidifier(room = 2, onoff = True)
 	elif float(avg_h2) < HUMIDITY_LOWER_TH:
 		print(" comando prender humidificador sala 2")
-		humidifier(room = 2, onff = False)
+		humidifier(room = 2, onoff = False)
 
 	# Logic for extractors on room 1
 	for s in sensors_room_1:
@@ -268,7 +268,7 @@ def updateControl():
 
 	# Logic for extractors on room 2
 	for s in sensors_room_2:
- 		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
+		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
 			extractor_max_trigger_2 = True
 			break
 		else:
@@ -422,7 +422,7 @@ if __name__ == '__main__':
 	try:
 		while True:
 			time.sleep(60)
-			updateControl()
+			updateControl(lh1 = last_hour_1,lh2 = last_hour_2,ah1 = actual_hour_1,ah2 = actual_hour_2)
 	except KeyboardInterrupt:
 		# Disconnect
 		print("Disconnecting...")
