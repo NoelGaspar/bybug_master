@@ -242,7 +242,7 @@ def updateControl():
 
 	# Logic for extractors on room 1
 	for s in sensors_room_1:
- 		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
+		if (float(sensor_dic[s]["h1"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["h2"]) > HUMIDITY_MAX_TH) or (float(sensor_dic[s]["co2"])> CO2_MAX_TH):
 			extractor_max_trigger_1 = True
 			break
 		else:
